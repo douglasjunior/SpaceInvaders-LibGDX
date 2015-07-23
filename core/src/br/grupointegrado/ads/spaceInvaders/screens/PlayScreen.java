@@ -90,23 +90,30 @@ public class PlayScreen extends BaseScreen {
         atualizaJogador(delta);
         atualizaAsteroides(delta);
         atualizarTiros(delta);
+        atualizaExplosoes(delta);
         detectarColisoes(delta);
 
         // atualiza o cenário e desenha na tela
         cenario.act(delta);
         cenario.draw();
 
-        // configura a perspectiva da câmera no batch
+        // desenha as explosoes
         batch.begin();
         for (Explosao exp : explosoes) {
             int i = exp.getEstagio() - 1;
             batch.draw(explosoesTexturas.get(i), exp.getX(), exp.getY());
+        }
+        batch.end();
+    }
+
+    private void atualizaExplosoes(float delta) {
+        for (Explosao exp : explosoes) {
             exp.atualizar();
+            // verifica se a explosão já passou todos os estágios
             if (exp.getEstagio() > 17) {
                 explosoes.removeValue(exp, true);
             }
         }
-        batch.end();
     }
 
     private void atualizaJogador(float delta) {
