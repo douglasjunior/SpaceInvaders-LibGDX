@@ -6,6 +6,7 @@ import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Sprite;
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.scenes.scene2d.Stage;
@@ -14,32 +15,35 @@ import com.badlogic.gdx.scenes.scene2d.utils.SpriteDrawable;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.viewport.FillViewport;
 
-import java.util.List;
+import br.grupointegrado.ads.spaceInvaders.model.Explosao;
 
 /**
  * Created by Douglas on 21/07/2015.
  */
 public class PlayScreen extends BaseScreen {
 
-
+    private SpriteBatch batch;
     private OrthographicCamera camera; // camera para criar a sensação de 2D
     private Stage cenario; // Stage (Palco) é o cenário do jogo
-    private Image player; // Image é uma implementação de Actor, que são os atores do jogo.
-    private Texture playerTextura;
-    private Texture playerTexturaEsquerda;
-    private Texture playerTexturaDireita;
-    private Texture asteroidTextura1;
-    private Texture asteroidTextura2;
-    private Array<Image> shoots = new Array<Image>();
-    private Array<Image> asteroids = new Array<Image>();
-    private Texture shootTexture;
-    private float velocidadePlayer = 200;
-    private float velocidadeShoot = 250;
-    private float velocidadeAsteroid1 = 100;
-    private float velocidadeAsteroid2 = 150;
-    private int maxAsteroids = 5;
+    private Image jogador; // Image é uma implementação de Actor, que são os atores do jogo.
+    private Texture jogadorTextura;
+    private Texture jogadorTexturaEsquerda;
+    private Texture jogadorTexturaDireita;
+    private Texture asteroideTextura1;
+    private Texture asteroideTextura2;
+    private Texture tiroTexture;
+    private Array<Texture> explosoesTexturas = new Array<Texture>();
+    private Array<Image> tiros = new Array<Image>();
+    private Array<Image> asteroides = new Array<Image>();
+    private Array<Explosao> explosoes = new Array<Explosao>();
+    private float velocidadeJogador = 200;
+    private float velocidadeTiro = 250;
+    private float velocidadeAsteroide1 = 100;
+    private float velocidadeAsteroide2 = 150;
+    private int maxAsteroides = 5;
     private boolean indoEsquerda = false;
     private boolean indoDireita = false;
+    private boolean atirando = false;
 
     /**
      * Chamado quando a Screen é exbida a primeira vez
@@ -47,20 +51,29 @@ public class PlayScreen extends BaseScreen {
     @Override
     public void show() {
         camera = new OrthographicCamera();
+        batch = new SpriteBatch();
         cenario = new Stage(new FillViewport(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), camera));
-        shootTexture = new Texture("sprites/shot.png");
-        asteroidTextura1 = new Texture("sprites/enemie-1.png");
-        asteroidTextura2 = new Texture("sprites/enemie-2.png");
+        tiroTexture = new Texture("sprites/shot.png");
+        asteroideTextura1 = new Texture("sprites/enemie-1.png");
+        asteroideTextura2 = new Texture("sprites/enemie-2.png");
         initPlayer();
+        initExplosoes();
+    }
+
+    private void initExplosoes() {
+        for (int i = 1; i <= 17; i++) {
+            Texture explosao = new Texture("sprites/explosion-" + i + ".png");
+            explosoesTexturas.add(explosao);
+        }
     }
 
     private void initPlayer() {
-        playerTextura = new Texture("sprites/player.png");
-        playerTexturaEsquerda = new Texture("sprites/player-left.png");
-        playerTexturaDireita = new Texture("sprites/player-right.png");
-        player = new Image(playerTextura);
-        player.setPosition((camera.viewportWidth / 2) - player.getWidth() / 2, 10);
-        cenario.addActor(player);
+        jogadorTextura = new Texture("sprites/player.png");
+        jogadorTexturaEsquerda = new Texture("sprites/player-left.png");
+        jogadorTexturaDireita = new Texture("sprites/player-right.png");
+        jogador = new Image(jogadorTextura);
+        jogador.setPosition((camera.viewportWidth / 2) - jogador.getWidth() / 2, 10);
+        cenario.addActor(jogador);
     }
 
     /**
@@ -70,92 +83,139 @@ public class PlayScreen extends BaseScreen {
      */
     @Override
     public void render(float delta) {
-        Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
         Gdx.gl.glClearColor(.15f, .15f, .25f, 1);
+        Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT | GL20.GL_DEPTH_BUFFER_BIT);
 
         capturaTeclas(delta);
+        atualizaJogador(delta);
         atualizaAsteroides(delta);
         atualizarTiros(delta);
         detectarColisoes(delta);
 
-        if (indoDireita) {
-            player.setDrawable(new SpriteDrawable(new Sprite(playerTexturaDireita)));
-        } else if (indoEsquerda) {
-            player.setDrawable(new SpriteDrawable(new Sprite(playerTexturaEsquerda)));
-        } else {
-            player.setDrawable(new SpriteDrawable(new Sprite(playerTextura)));
-        }
-
+        // atualiza o cenário e desenha na tela
         cenario.act(delta);
         cenario.draw();
+
+        // configura a perspectiva da câmera no batch
+        batch.begin();
+        for (Explosao exp : explosoes) {
+            int i = exp.getEstagio() - 1;
+            batch.draw(explosoesTexturas.get(i), exp.getX(), exp.getY());
+            exp.atualizar();
+            if (exp.getEstagio() > 17) {
+                explosoes.removeValue(exp, true);
+            }
+        }
+        batch.end();
+    }
+
+    private void atualizaJogador(float delta) {
+        if (indoDireita) {
+            // impede que o jogador saia da tela
+            if (jogador.getX() + jogador.getWidth() < camera.viewportWidth) {
+                jogador.setX(jogador.getX() + (velocidadeJogador * delta));
+            }
+            jogador.setDrawable(new SpriteDrawable(new Sprite(jogadorTexturaDireita)));
+        } else if (indoEsquerda) {
+            // impede que o jogador saia da tela
+            if (jogador.getX() > 0) {
+                jogador.setX(jogador.getX() - (velocidadeJogador * delta));
+            }
+            jogador.setDrawable(new SpriteDrawable(new Sprite(jogadorTexturaEsquerda)));
+        } else {
+            jogador.setDrawable(new SpriteDrawable(new Sprite(jogadorTextura)));
+        }
     }
 
     private void detectarColisoes(float delta) {
         Rectangle boundsAsteroid = new Rectangle();
         Rectangle boundsShoot = new Rectangle();
-        for (Image asteroid : asteroids) {
+        for (Image asteroid : asteroides) {
             boundsAsteroid.set(asteroid.getX(), asteroid.getY(), asteroid.getWidth(), asteroid.getHeight());
-            for (Image shoot : shoots) {
-                boundsShoot.set(shoot.getX(), shoot.getY(), shoot.getWidth(), shoot.getHeight());
+            for (Image tiro : tiros) {
+                boundsShoot.set(tiro.getX(), tiro.getY(), tiro.getWidth(), tiro.getHeight());
                 // verifica colisão
                 if (boundsAsteroid.overlaps(boundsShoot)) {
                     asteroid.remove();
-                    asteroids.removeValue(asteroid, true);
-                    shoot.remove();
-                    shoots.removeValue(shoot, true);
+                    asteroides.removeValue(asteroid, true);
+                    tiro.remove();
+                    tiros.removeValue(tiro, true);
+                    criarExplosao(tiro.getX(), tiro.getY());
                 }
             }
-
         }
     }
 
+    private void criarExplosao(float x, float y) {
+        Explosao explosao = new Explosao();
+        explosao.setX(x);
+        explosao.setY(y);
+        explosoes.add(explosao);
+    }
+
     private void atualizaAsteroides(float delta) {
-        for (Image asteroid : asteroids) {
-            // verifica o nome do asteroid para decidir a velocidade
+        for (Image asteroid : asteroides) {
             float velocidade;
+            // verifica o tipo do asteroid para decidir a velocidade
             if ("1".equals(asteroid.getName())) {
-                velocidade = velocidadeAsteroid1;
+                velocidade = velocidadeAsteroide1;
             } else {
-                velocidade = velocidadeAsteroid2;
+                velocidade = velocidadeAsteroide2;
             }
-            // movimenta o asteroid em direção ao player
+            // movimenta o asteroid em direção ao jogador
             float x = asteroid.getX();
             float y = asteroid.getY() - velocidade * delta;
             asteroid.setPosition(x, y);
             // remove o asteroid que já saiu da tela
             if (asteroid.getY() + asteroid.getHeight() < 0) {
                 asteroid.remove();
-                asteroids.removeValue(asteroid, true);
+                asteroides.removeValue(asteroid, true);
             }
         }
-        // cria novos asteroids
-        if (asteroids.size < maxAsteroids) {
+        // cria novos asteroides se necessário
+        if (asteroides.size < maxAsteroides) {
             Image asteroid;
-            if (MathUtils.random(1, 3) == 1) {
-                asteroid = new Image(asteroidTextura1);
+            // decide aleatoriamente entre criar asteroide tipo 1 ou 2
+            int tipo = MathUtils.random(1, 3);
+            if (tipo == 1) {
+                asteroid = new Image(asteroideTextura1);
                 asteroid.setName("1");
             } else {
-                asteroid = new Image(asteroidTextura2);
+                asteroid = new Image(asteroideTextura2);
                 asteroid.setName("2");
             }
-            //configura posições aleatórias para os asteroids
-            asteroid.setX(MathUtils.random(0, camera.viewportWidth - asteroid.getWidth()));
-            asteroid.setY(MathUtils.random(camera.viewportHeight, camera.viewportHeight * 2));
-            asteroids.add(asteroid);
+            // configura posições aleatórias para os asteroides
+            float x = MathUtils.random(0, camera.viewportWidth - asteroid.getWidth());
+            float y = MathUtils.random(camera.viewportHeight, camera.viewportHeight * 2);
+            asteroid.setPosition(x, y);
+            asteroides.add(asteroid);
             cenario.addActor(asteroid);
         }
     }
 
     private void atualizarTiros(float delta) {
-        for (Image shoot : shoots) {
+        for (Image tiro : tiros) {
             // movimenta o tiro em direção ao topo da tela
-            float x = shoot.getX();
-            float y = shoot.getY() + velocidadeShoot * delta;
-            shoot.setPosition(x, y);
+            float x = tiro.getX();
+            float y = tiro.getY() + velocidadeTiro * delta;
+            tiro.setPosition(x, y);
             // verifica se o tiro já saiu da tela
-            if (shoot.getY() > camera.viewportHeight) {
-                shoot.remove();
-                shoots.removeValue(shoot, true);
+            if (tiro.getY() > camera.viewportHeight) {
+                tiro.remove();
+                tiros.removeValue(tiro, true);
+            }
+        }
+        // cria novos tiros se necessário
+        if (atirando) {
+            // verifica se o último tiro foi disparado a 400 milisegundos atrás
+            if (System.currentTimeMillis() - ultimoTiro >= 400) {
+                Image tiro = new Image(tiroTexture);
+                float x = jogador.getX() + jogador.getWidth() / 2 - tiro.getWidth() / 2;
+                float y = jogador.getY() + jogador.getHeight();
+                tiro.setPosition(x, y);
+                tiros.add(tiro);
+                cenario.addActor(tiro);
+                ultimoTiro = System.currentTimeMillis();
             }
         }
     }
@@ -163,36 +223,22 @@ public class PlayScreen extends BaseScreen {
     private void capturaTeclas(float delta) {
         indoDireita = false;
         indoEsquerda = false;
+        atirando = false;
+        // verifica se a seta para esquerda está pressionada
         if (Gdx.input.isKeyPressed(Input.Keys.LEFT)) {
-            if (player.getX() > 0) {
-                player.setX(player.getX() - (velocidadePlayer * delta));
-            }
             indoEsquerda = true;
         }
+        // verifica se a seta para a direita está pressionada
         if (Gdx.input.isKeyPressed(Input.Keys.RIGHT)) {
-            if (player.getX() + player.getWidth() < camera.viewportWidth) {
-                player.setX(player.getX() + (velocidadePlayer * delta));
-            }
             indoDireita = true;
         }
+        // verifica se o espaço está pressionado
         if (Gdx.input.isKeyPressed(Input.Keys.SPACE)) {
-            atirar();
+            atirando = true;
         }
     }
 
     private long ultimoTiro = 0;
-
-    private void atirar() {
-        if (System.currentTimeMillis() - ultimoTiro >= 400) {
-            Image shoot = new Image(shootTexture);
-            float x = player.getX() + player.getWidth() / 2 - shoot.getWidth() / 2;
-            float y = player.getY() + player.getHeight();
-            shoot.setPosition(x, y);
-            shoots.add(shoot);
-            cenario.addActor(shoot);
-            ultimoTiro = System.currentTimeMillis();
-        }
-    }
 
     /**
      * Chamado sempre que a Screen muda de tamanho (rotação da tela)
@@ -228,9 +274,12 @@ public class PlayScreen extends BaseScreen {
     @Override
     public void dispose() {
         cenario.dispose();
-        playerTextura.dispose();
-        playerTexturaDireita.dispose();
-        playerTexturaEsquerda.dispose();
-        shootTexture.dispose();
+        jogadorTextura.dispose();
+        jogadorTexturaDireita.dispose();
+        jogadorTexturaEsquerda.dispose();
+        tiroTexture.dispose();
+        for (Texture t : explosoesTexturas) {
+            t.dispose();
+        }
     }
 }
