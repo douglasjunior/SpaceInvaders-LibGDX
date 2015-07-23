@@ -99,6 +99,7 @@ public class PlayScreen extends BaseScreen {
 
         // desenha as explosoes
         batch.begin();
+        batch.setProjectionMatrix(camera.combined);
         for (Explosao exp : explosoes) {
             int i = exp.getEstagio() - 1;
             batch.draw(explosoesTexturas.get(i), exp.getX(), exp.getY());
@@ -108,7 +109,7 @@ public class PlayScreen extends BaseScreen {
 
     private void atualizaExplosoes(float delta) {
         for (Explosao exp : explosoes) {
-            exp.atualizar();
+            exp.atualizar(delta);
             // verifica se a explosão já passou todos os estágios
             if (exp.getEstagio() > 17) {
                 explosoes.removeValue(exp, true);
@@ -154,9 +155,10 @@ public class PlayScreen extends BaseScreen {
     }
 
     private void criarExplosao(float x, float y) {
+        // a imagem da explosão mede 96 por 96 pixels
         Explosao explosao = new Explosao();
-        explosao.setX(x);
-        explosao.setY(y);
+        explosao.setX(x - 96 / 2);
+        explosao.setY(y - 96 / 2);
         explosoes.add(explosao);
     }
 
