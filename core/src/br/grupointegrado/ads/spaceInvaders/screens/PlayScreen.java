@@ -1,5 +1,6 @@
 package br.grupointegrado.ads.spaceInvaders.screens;
 
+import com.badlogic.gdx.Application;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.graphics.GL20;
@@ -17,8 +18,6 @@ import com.badlogic.gdx.scenes.scene2d.utils.SpriteDrawable;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.viewport.FillViewport;
 
-import org.w3c.dom.css.Rect;
-
 import br.grupointegrado.ads.spaceInvaders.model.Explosao;
 
 /**
@@ -34,6 +33,7 @@ public class PlayScreen extends BaseScreen {
     private Image jogador; // Image é uma implementação de Actor, que são os atores do jogo.
     private Label lbPontuacao;
     private Label lbGameOver;
+    private Label lbPausado;
     private Texture jogadorTextura;
     private Texture jogadorTexturaEsquerda;
     private Texture jogadorTexturaDireita;
@@ -48,12 +48,13 @@ public class PlayScreen extends BaseScreen {
     private float velocidadeTiro = 250;
     private float velocidadeAsteroide1 = 100;
     private float velocidadeAsteroide2 = 150;
-    private int maxAsteroides = 60;
+    private int maxAsteroides = 10;
+    private int intervaloTiros = 400;
     private boolean indoEsquerda = false;
     private boolean indoDireita = false;
     private boolean atirando = false;
     private boolean gameOver = false;
-    private boolean pausado = true;
+    private boolean pausado = false;
     private int pontuacao = 0;
 
     /**
@@ -80,12 +81,15 @@ public class PlayScreen extends BaseScreen {
         style.font = font;
 
         lbPontuacao = new Label("", style);
-        lbPontuacao.setPosition(10, camera.viewportHeight - 10);
         informacoes.addActor(lbPontuacao);
 
         lbGameOver = new Label("Game Over!", style);
         lbGameOver.setVisible(false);
         informacoes.addActor(lbGameOver);
+
+        lbPausado = new Label("Em pausa!", style);
+        lbPausado.setVisible(true);
+        informacoes.addActor(lbPausado);
     }
 
     private void initExplosoes() {
@@ -114,21 +118,18 @@ public class PlayScreen extends BaseScreen {
         Gdx.gl.glClearColor(.15f, .15f, .25f, 1);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT | GL20.GL_DEPTH_BUFFER_BIT);
 
-
+        capturaTeclas(delta);
         if (!gameOver) {
-          //  if (!pausado) {
-                capturaTeclas(delta);
+            if (!pausado) {
+                capturaTeclasJogo(delta);
                 atualizaJogador(delta);
                 atualizaAsteroides(delta);
                 atualizarTiros(delta);
                 atualizaExplosoes(delta);
                 detectarColisoes(delta);
-                atualizarInformacoes(delta);
-          //  }
-        } else {
-            lbGameOver.setVisible(true);
-            lbGameOver.setPosition(camera.viewportWidth / 2 - lbGameOver.getWidth() / 2, camera.viewportHeight / 2 - lbGameOver.getHeight() / 2);
+            }
         }
+        atualizarInformacoes(delta);
 
         // desenha o cenário na tela
         cenario.act(delta);
@@ -148,8 +149,42 @@ public class PlayScreen extends BaseScreen {
         informacoes.draw();
     }
 
+    private void capturaTeclas(float delta) {
+        // verifica se o botão PAUSE foi pressionado
+        if (!gameOver && Gdx.input.isKeyJustPressed(Input.Keys.CONTROL_LEFT)) {
+            pausado = !pausado;
+        }
+        // verifica se o ENTER foi pressionado para reiniciar o Jogo
+        if (gameOver && Gdx.input.isKeyJustPressed(Input.Keys.ENTER)) {
+            pontuacao = 0;
+            gameOver = false;
+            pausado = false;
+            for (Image ast : asteroides) {
+                ast.remove();
+            }
+            asteroides.clear();
+            for (Image tiro : tiros) {
+                tiro.remove();
+            }
+            tiros.clear();
+            explosoes.clear();
+            jogador.setX(camera.viewportWidth / 2 - jogador.getWidth() / 2);
+        }
+    }
+
+    /**
+     * Ataliza informações escritas na tela
+     * @param delta
+     */
     private void atualizarInformacoes(float delta) {
         lbPontuacao.setText(pontuacao + " pontos");
+        lbPontuacao.setPosition(10, camera.viewportHeight - lbPontuacao.getHeight() - 10);
+
+        lbGameOver.setVisible(gameOver);
+        lbGameOver.setPosition(camera.viewportWidth / 2 - lbGameOver.getWidth() / 2, camera.viewportHeight / 2 - lbGameOver.getHeight() / 2);
+
+        lbPausado.setVisible(pausado);
+        lbPausado.setPosition(camera.viewportWidth / 2 - lbPausado.getWidth() / 2, camera.viewportHeight / 2 - lbPausado.getHeight() / 2);
     }
 
     private void atualizaExplosoes(float delta) {
@@ -287,7 +322,7 @@ public class PlayScreen extends BaseScreen {
         // cria novos tiros se necessário
         if (atirando) {
             // verifica se o último tiro foi disparado a 400 milisegundos atrás
-            if (System.currentTimeMillis() - ultimoTiro >= 1) {
+            if (System.currentTimeMillis() - ultimoTiro >= intervaloTiros) {
                 Image tiro = new Image(tiroTexture);
                 float x = jogador.getX() + jogador.getWidth() / 2 - tiro.getWidth() / 2;
                 float y = jogador.getY() + jogador.getHeight();
@@ -299,25 +334,30 @@ public class PlayScreen extends BaseScreen {
         }
     }
 
-    private void capturaTeclas(float delta) {
+    private void capturaTeclasJogo(float delta) {
         indoDireita = false;
         indoEsquerda = false;
         atirando = false;
         // verifica se a seta para esquerda está pressionada
-        if (Gdx.input.isKeyPressed(Input.Keys.LEFT)) {
+        if (Gdx.input.isKeyPressed(Input.Keys.LEFT) || toqueEsquerda()) {
             indoEsquerda = true;
         }
         // verifica se a seta para a direita está pressionada
-        if (Gdx.input.isKeyPressed(Input.Keys.RIGHT)) {
+        if (Gdx.input.isKeyPressed(Input.Keys.RIGHT) || toqueDireita()) {
             indoDireita = true;
         }
         // verifica se o espaço está pressionado
-        if (Gdx.input.isKeyPressed(Input.Keys.SPACE)) {
+        if (Gdx.input.isKeyPressed(Input.Keys.SPACE) || Gdx.app.getType() == Application.ApplicationType.Android) {
             atirando = true;
         }
-        if (Gdx.input.isKeyJustPressed(Input.Keys.CONTROL_LEFT)) {
-            pausado = !pausado;
-        }
+    }
+
+    private boolean toqueDireita() {
+        return Gdx.input.isTouched() && Gdx.input.getX() > camera.viewportWidth / 2;
+    }
+
+    private boolean toqueEsquerda() {
+        return Gdx.input.isTouched() && Gdx.input.getX() < camera.viewportWidth / 2;
     }
 
     private long ultimoTiro = 0;
