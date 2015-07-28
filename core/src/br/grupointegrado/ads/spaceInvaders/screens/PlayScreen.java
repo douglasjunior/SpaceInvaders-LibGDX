@@ -11,6 +11,8 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.Sprite;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator;
+import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGeneratorLoader;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.scenes.scene2d.Stage;
@@ -70,7 +72,6 @@ public class PlayScreen extends BaseScreen {
     public void show() {
         camera = new OrthographicCamera();
         batch = new SpriteBatch();
-        font = new BitmapFont();
         cenario = new Stage(new FillViewport(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), camera));
         informacoes = new Stage(new FillViewport(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), camera));
         tiroTexture = new Texture("sprites/shot.png");
@@ -92,6 +93,12 @@ public class PlayScreen extends BaseScreen {
     }
 
     private void initInformacoes() {
+        FreeTypeFontGenerator generator = new FreeTypeFontGenerator(Gdx.files.internal("fonts/roboto.ttf"));
+        FreeTypeFontGenerator.FreeTypeFontParameter params = new FreeTypeFontGenerator.FreeTypeFontParameter();
+        params.size = 24;
+        font = generator.generateFont(params);
+        generator.dispose();
+
         // cria um estilo para o Label
         Label.LabelStyle style = new Label.LabelStyle();
         style.font = font;
@@ -141,10 +148,10 @@ public class PlayScreen extends BaseScreen {
                 atualizaJogador(delta);
                 atualizaAsteroides(delta);
                 atualizarTiros(delta);
-                atualizaExplosoes(delta);
                 detectarColisoes(delta);
             }
         }
+        atualizaExplosoes(delta);
         atualizarInformacoes(delta);
 
         // desenha o cenário na tela
@@ -172,21 +179,26 @@ public class PlayScreen extends BaseScreen {
         }
         // verifica se o ENTER foi pressionado para reiniciar o Jogo
         if (gameOver && Gdx.input.isKeyJustPressed(Input.Keys.ENTER)) {
-            pontuacao = 0;
-            gameOver = false;
-            pausado = false;
-            for (Image ast : asteroides) {
-                ast.remove();
-            }
-            asteroides.clear();
-            for (Image tiro : tiros) {
-                tiro.remove();
-            }
-            tiros.clear();
-            explosoes.clear();
-            jogador.setX(camera.viewportWidth / 2 - jogador.getWidth() / 2);
-            musicaFundo.play();
+            reiniciarJogo();
         }
+    }
+
+    private void reiniciarJogo() {
+        pontuacao = 0;
+        gameOver = false;
+        pausado = false;
+        for (Image ast : asteroides) {
+            ast.remove();
+        }
+        asteroides.clear();
+        for (Image tiro : tiros) {
+            tiro.remove();
+        }
+        tiros.clear();
+        explosoes.clear();
+        jogador.setX(camera.viewportWidth / 2 - jogador.getWidth() / 2);
+        jogador.setVisible(true);
+        musicaFundo.play();
     }
 
     /**
@@ -195,7 +207,7 @@ public class PlayScreen extends BaseScreen {
      */
     private void atualizarInformacoes(float delta) {
         lbPontuacao.setText(pontuacao + " pontos");
-        lbPontuacao.setPosition(10, camera.viewportHeight - lbPontuacao.getHeight() - 10);
+        lbPontuacao.setPosition(10, camera.viewportHeight - lbPontuacao.getPrefHeight());
 
         lbGameOver.setVisible(gameOver);
         lbGameOver.setPosition(camera.viewportWidth / 2 - lbGameOver.getWidth() / 2, camera.viewportHeight / 2 - lbGameOver.getHeight() / 2);
@@ -240,6 +252,10 @@ public class PlayScreen extends BaseScreen {
             boundsAsteroid.set(asteroid.getX(), asteroid.getY(), asteroid.getWidth(), asteroid.getHeight());
             if (boundsAsteroid.overlaps(boundsJogador)) {
                 gameOver = true;
+                criarExplosao(jogador.getX() + jogador.getWidth() / 2, jogador.getY() + jogador.getHeight() / 2);
+                jogador.setVisible(false);
+                asteroid.remove();
+                asteroides.removeValue(asteroid, true);
                 somGameover.play();
                 musicaFundo.pause();
                 return;
