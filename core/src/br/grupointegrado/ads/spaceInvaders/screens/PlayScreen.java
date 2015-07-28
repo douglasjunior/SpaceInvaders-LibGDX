@@ -3,6 +3,8 @@ package br.grupointegrado.ads.spaceInvaders.screens;
 import com.badlogic.gdx.Application;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
+import com.badlogic.gdx.audio.Music;
+import com.badlogic.gdx.audio.Sound;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
@@ -44,6 +46,10 @@ public class PlayScreen extends BaseScreen {
     private Array<Image> tiros = new Array<Image>();
     private Array<Image> asteroides = new Array<Image>();
     private Array<Explosao> explosoes = new Array<Explosao>();
+    private Music musicaFundo;
+    private Sound somExplosao;
+    private Sound somGameover;
+    private Sound somTiro;
     private float velocidadeJogador = 200;
     private float velocidadeTiro = 250;
     private float velocidadeAsteroide1 = 100;
@@ -73,6 +79,16 @@ public class PlayScreen extends BaseScreen {
         initPlayer();
         initExplosoes();
         initInformacoes();
+        initSons();
+    }
+
+    private void initSons() {
+        musicaFundo = Gdx.audio.newMusic(Gdx.files.internal("sounds/background.mp3"));
+        musicaFundo.setLooping(true);
+        musicaFundo.play();
+        somExplosao = Gdx.audio.newSound(Gdx.files.internal("sounds/explosion.mp3"));
+        somGameover = Gdx.audio.newSound(Gdx.files.internal("sounds/gameover.mp3"));
+        somTiro = Gdx.audio.newSound(Gdx.files.internal("sounds/shoot.mp3"));
     }
 
     private void initInformacoes() {
@@ -169,6 +185,7 @@ public class PlayScreen extends BaseScreen {
             tiros.clear();
             explosoes.clear();
             jogador.setX(camera.viewportWidth / 2 - jogador.getWidth() / 2);
+            musicaFundo.play();
         }
     }
 
@@ -223,6 +240,8 @@ public class PlayScreen extends BaseScreen {
             boundsAsteroid.set(asteroid.getX(), asteroid.getY(), asteroid.getWidth(), asteroid.getHeight());
             if (boundsAsteroid.overlaps(boundsJogador)) {
                 gameOver = true;
+                somGameover.play();
+                musicaFundo.pause();
                 return;
             }
             for (Image tiro : tiros) {
@@ -235,6 +254,7 @@ public class PlayScreen extends BaseScreen {
                     tiros.removeValue(tiro, true);
                     criarExplosao(tiro.getX(), tiro.getY());
                     incrementaPontuacao(asteroid);
+                    somExplosao.play();
                 }
             }
         }
@@ -330,6 +350,7 @@ public class PlayScreen extends BaseScreen {
                 tiros.add(tiro);
                 cenario.addActor(tiro);
                 ultimoTiro = System.currentTimeMillis();
+                somTiro.play();
             }
         }
     }
@@ -404,5 +425,9 @@ public class PlayScreen extends BaseScreen {
             t.dispose();
         }
         informacoes.dispose();
+        musicaFundo.dispose();
+        somExplosao.dispose();
+        somGameover.dispose();
+        somTiro.dispose();
     }
 }
