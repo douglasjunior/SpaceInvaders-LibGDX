@@ -12,7 +12,6 @@ import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.Sprite;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator;
-import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGeneratorLoader;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.scenes.scene2d.Stage;
@@ -22,7 +21,9 @@ import com.badlogic.gdx.scenes.scene2d.utils.SpriteDrawable;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.viewport.FillViewport;
 
+import br.grupointegrado.ads.spaceInvaders.MainGame;
 import br.grupointegrado.ads.spaceInvaders.model.Explosao;
+import br.grupointegrado.ads.spaceInvaders.util.Preferencias;
 
 /**
  * Created by Douglas on 21/07/2015.
@@ -64,6 +65,10 @@ public class PlayScreen extends BaseScreen {
     private boolean gameOver = false;
     private boolean pausado = false;
     private int pontuacao = 0;
+
+    public PlayScreen(MainGame game) {
+        super(game);
+    }
 
     /**
      * Chamado quando a Screen é exbida a primeira vez
@@ -139,7 +144,7 @@ public class PlayScreen extends BaseScreen {
     @Override
     public void render(float delta) {
         Gdx.gl.glClearColor(.15f, .15f, .25f, 1);
-        Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT | GL20.GL_DEPTH_BUFFER_BIT);
+        Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
         capturaTeclas(delta);
         if (!gameOver) {
@@ -251,13 +256,13 @@ public class PlayScreen extends BaseScreen {
         for (Image asteroid : asteroides) {
             boundsAsteroid.set(asteroid.getX(), asteroid.getY(), asteroid.getWidth(), asteroid.getHeight());
             if (boundsAsteroid.overlaps(boundsJogador)) {
-                gameOver = true;
                 criarExplosao(jogador.getX() + jogador.getWidth() / 2, jogador.getY() + jogador.getHeight() / 2);
                 jogador.setVisible(false);
                 asteroid.remove();
                 asteroides.removeValue(asteroid, true);
                 somGameover.play();
                 musicaFundo.pause();
+                gameOver();
                 return;
             }
             for (Image tiro : tiros) {
@@ -273,6 +278,13 @@ public class PlayScreen extends BaseScreen {
                     somExplosao.play();
                 }
             }
+        }
+    }
+
+    private void gameOver() {
+        gameOver = true;
+        if (pontuacao > Preferencias.getMaiorPontuacao()) {
+            Preferencias.setMaiorPontuacao(pontuacao);
         }
     }
 
