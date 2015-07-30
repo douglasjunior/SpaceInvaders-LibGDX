@@ -38,6 +38,7 @@ public class PlayScreen extends BaseScreen {
     private Image jogador; // Image é uma implementação de Actor, que são os atores do jogo.
     private Label lbPontuacao;
     private Label lbGameOver;
+    private Label lbMaiorPontuacao;
     private Label lbPausado;
     private Texture jogadorTextura;
     private Texture jogadorTexturaEsquerda;
@@ -101,6 +102,8 @@ public class PlayScreen extends BaseScreen {
         FreeTypeFontGenerator generator = new FreeTypeFontGenerator(Gdx.files.internal("fonts/roboto.ttf"));
         FreeTypeFontGenerator.FreeTypeFontParameter params = new FreeTypeFontGenerator.FreeTypeFontParameter();
         params.size = 24;
+        params.shadowOffsetX = 2;
+        params.shadowOffsetY = 2;
         font = generator.generateFont(params);
         generator.dispose();
 
@@ -118,6 +121,10 @@ public class PlayScreen extends BaseScreen {
         lbPausado = new Label("Em pausa!", style);
         lbPausado.setVisible(true);
         informacoes.addActor(lbPausado);
+
+        lbMaiorPontuacao = new Label("Maior pontuacao: 0", style);
+        lbMaiorPontuacao.setVisible(false);
+        informacoes.addActor(lbMaiorPontuacao);
     }
 
     private void initExplosoes() {
@@ -208,6 +215,7 @@ public class PlayScreen extends BaseScreen {
 
     /**
      * Ataliza informações escritas na tela
+     *
      * @param delta
      */
     private void atualizarInformacoes(float delta) {
@@ -219,6 +227,10 @@ public class PlayScreen extends BaseScreen {
 
         lbPausado.setVisible(pausado);
         lbPausado.setPosition(camera.viewportWidth / 2 - lbPausado.getWidth() / 2, camera.viewportHeight / 2 - lbPausado.getHeight() / 2);
+
+        lbMaiorPontuacao.setText("Maior pontuação: " + Preferencias.getMaiorPontuacao());
+        lbMaiorPontuacao.setVisible(gameOver);
+        lbMaiorPontuacao.setPosition(camera.viewportWidth / 2 - lbMaiorPontuacao.getWidth() / 2, lbGameOver.getY() - 100);
     }
 
     private void atualizaExplosoes(float delta) {

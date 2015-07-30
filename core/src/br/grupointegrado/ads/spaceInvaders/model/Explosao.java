@@ -5,8 +5,9 @@ package br.grupointegrado.ads.spaceInvaders.model;
  */
 public class Explosao {
 
+    private final float intervalo = 1f / 17f;
+
     private float acumulado = 0;
-    private float intervalo = 1f / 17f;
     private int estagio = 1;
     private float x;
     private float y;

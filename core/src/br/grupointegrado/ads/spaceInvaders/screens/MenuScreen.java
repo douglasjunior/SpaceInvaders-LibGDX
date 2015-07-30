@@ -4,17 +4,20 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
+import com.badlogic.gdx.graphics.g2d.Sprite;
 import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.Stage;
+import com.badlogic.gdx.scenes.scene2d.ui.ImageTextButton;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
-import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
-import com.badlogic.gdx.utils.compression.lzma.Base;
+import com.badlogic.gdx.scenes.scene2d.utils.SpriteDrawable;
 import com.badlogic.gdx.utils.viewport.FillViewport;
 
 import br.grupointegrado.ads.spaceInvaders.MainGame;
+import br.grupointegrado.ads.spaceInvaders.util.Preferencias;
 
 /**
  * Created by Douglas on 28/07/2015.
@@ -23,9 +26,13 @@ public class MenuScreen extends BaseScreen {
 
     private OrthographicCamera camera;
     private Stage cenario;
-    private BitmapFont font;
-    private TextButton btnIniciar;
+    private BitmapFont fontBotoes;
+    private BitmapFont fontTitulo;
+    private Texture botaoTextura;
+    private Texture botaoPressionadoTextura;
+    private ImageTextButton btnIniciar;
     private Label lbTitulo;
+    private Label lbPontuacao;
 
     public MenuScreen(MainGame game) {
         super(game);
@@ -37,7 +44,13 @@ public class MenuScreen extends BaseScreen {
         cenario = new Stage(new FillViewport(camera.viewportWidth, camera.viewportHeight, camera));
         Gdx.input.setInputProcessor(cenario);
 
+        initTexturas();
         initBotoes();
+    }
+
+    private void initTexturas() {
+        botaoTextura = new Texture(Gdx.files.internal("buttons/button.png"));
+        botaoPressionadoTextura = new Texture(Gdx.files.internal("buttons/button-down.png"));
     }
 
     private void initBotoes() {
@@ -45,18 +58,35 @@ public class MenuScreen extends BaseScreen {
         FreeTypeFontGenerator.FreeTypeFontParameter params = new FreeTypeFontGenerator.FreeTypeFontParameter();
         params.size = 24;
         params.color = Color.BLACK;
-        font = generator.generateFont(params);
+        fontBotoes = generator.generateFont(params);
+
+        params = new FreeTypeFontGenerator.FreeTypeFontParameter();
+        params.size = 32;
+        params.color = new Color(.25f, .25f, .85f, 1);
+        params.shadowOffsetX = 2;
+        params.shadowOffsetY = 2;
+        params.shadowColor = Color.BLACK;
+        fontTitulo = generator.generateFont(params);
+
         generator.dispose();
 
         Label.LabelStyle labelStyle = new Label.LabelStyle();
-        labelStyle.font = font;
+        labelStyle.font = fontTitulo;
         lbTitulo = new Label("Space Invaders", labelStyle);
         cenario.addActor(lbTitulo);
 
-        TextButton.TextButtonStyle style = new TextButton.TextButtonStyle();
-        style.font = font;
-        btnIniciar = new TextButton("Iniciar", style);
-        btnIniciar.addListener(new ClickListener(){
+        labelStyle = new Label.LabelStyle();
+        labelStyle.font = fontBotoes;
+        lbPontuacao = new Label("Pontuação: " + Preferencias.getMaiorPontuacao(), labelStyle);
+        cenario.addActor(lbPontuacao);
+
+        ImageTextButton.ImageTextButtonStyle style = new ImageTextButton.ImageTextButtonStyle();
+        style.font = fontBotoes;
+        style.up = new SpriteDrawable(new Sprite(botaoTextura));
+        style.down = new SpriteDrawable(new Sprite(botaoPressionadoTextura));
+
+        btnIniciar = new ImageTextButton("  Iniciar  ", style);
+        btnIniciar.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
                 game.setScreen(new PlayScreen(game));
@@ -80,6 +110,8 @@ public class MenuScreen extends BaseScreen {
         lbTitulo.setPosition(camera.viewportWidth / 2 - lbTitulo.getWidth() / 2, camera.viewportHeight - 100);
 
         btnIniciar.setPosition(camera.viewportWidth / 2 - btnIniciar.getWidth() / 2, camera.viewportHeight / 2 - btnIniciar.getPrefHeight() / 2);
+
+        lbPontuacao.setPosition(camera.viewportWidth / 2 - lbPontuacao.getWidth() / 2, 100);
     }
 
     @Override
@@ -102,6 +134,9 @@ public class MenuScreen extends BaseScreen {
     @Override
     public void dispose() {
         cenario.dispose();
-        font.dispose();
+        fontBotoes.dispose();
+        fontTitulo.dispose();
+        botaoTextura.dispose();
+        botaoPressionadoTextura.dispose();
     }
 }
