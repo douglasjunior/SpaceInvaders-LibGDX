@@ -23,6 +23,7 @@ import com.badlogic.gdx.utils.viewport.FillViewport;
 
 import br.grupointegrado.ads.spaceInvaders.MainGame;
 import br.grupointegrado.ads.spaceInvaders.model.Explosao;
+import br.grupointegrado.ads.spaceInvaders.util.Format;
 import br.grupointegrado.ads.spaceInvaders.util.Preferencias;
 
 /**
@@ -59,7 +60,7 @@ public class PlayScreen extends BaseScreen {
     private float velocidadeAsteroide1 = 100;
     private float velocidadeAsteroide2 = 150;
     private int maxAsteroides = 10;
-    private int intervaloTiros = 400;
+    private int intervaloTiros = 350;
     private boolean indoEsquerda = false;
     private boolean indoDireita = false;
     private boolean atirando = false;
@@ -219,7 +220,7 @@ public class PlayScreen extends BaseScreen {
      * @param delta
      */
     private void atualizarInformacoes(float delta) {
-        lbPontuacao.setText(pontuacao + " pontos");
+        lbPontuacao.setText(Format.format(pontuacao) + " pontos");
         lbPontuacao.setPosition(10, camera.viewportHeight - lbPontuacao.getPrefHeight());
 
         lbGameOver.setVisible(gameOver);
@@ -228,9 +229,9 @@ public class PlayScreen extends BaseScreen {
         lbPausado.setVisible(pausado);
         lbPausado.setPosition(camera.viewportWidth / 2 - lbPausado.getWidth() / 2, camera.viewportHeight / 2 - lbPausado.getHeight() / 2);
 
-        lbMaiorPontuacao.setText("Maior pontuação: " + Preferencias.getMaiorPontuacao());
+        lbMaiorPontuacao.setText("Maior pontuação: " + Format.format(Preferencias.getMaiorPontuacao()));
         lbMaiorPontuacao.setVisible(gameOver);
-        lbMaiorPontuacao.setPosition(camera.viewportWidth / 2 - lbMaiorPontuacao.getWidth() / 2, lbGameOver.getY() - 100);
+        lbMaiorPontuacao.setPosition(camera.viewportWidth / 2 - lbMaiorPontuacao.getPrefWidth() / 2, lbGameOver.getY() - 100);
     }
 
     private void atualizaExplosoes(float delta) {

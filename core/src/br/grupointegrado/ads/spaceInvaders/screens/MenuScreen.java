@@ -17,6 +17,7 @@ import com.badlogic.gdx.scenes.scene2d.utils.SpriteDrawable;
 import com.badlogic.gdx.utils.viewport.FillViewport;
 
 import br.grupointegrado.ads.spaceInvaders.MainGame;
+import br.grupointegrado.ads.spaceInvaders.util.Format;
 import br.grupointegrado.ads.spaceInvaders.util.Preferencias;
 
 /**
@@ -44,16 +45,25 @@ public class MenuScreen extends BaseScreen {
         cenario = new Stage(new FillViewport(camera.viewportWidth, camera.viewportHeight, camera));
         Gdx.input.setInputProcessor(cenario);
 
+        initFonts();
         initTexturas();
+        initLabels();
         initBotoes();
     }
 
-    private void initTexturas() {
-        botaoTextura = new Texture(Gdx.files.internal("buttons/button.png"));
-        botaoPressionadoTextura = new Texture(Gdx.files.internal("buttons/button-down.png"));
+    private void initLabels() {
+        Label.LabelStyle labelStyle = new Label.LabelStyle();
+        labelStyle.font = fontTitulo;
+        lbTitulo = new Label("Space Invaders", labelStyle);
+        cenario.addActor(lbTitulo);
+
+        labelStyle = new Label.LabelStyle();
+        labelStyle.font = fontBotoes;
+        lbPontuacao = new Label("Pontuação: " + Format.format(Preferencias.getMaiorPontuacao()), labelStyle);
+        cenario.addActor(lbPontuacao);
     }
 
-    private void initBotoes() {
+    private void initFonts() {
         FreeTypeFontGenerator generator = new FreeTypeFontGenerator(Gdx.files.internal("fonts/roboto.ttf"));
         FreeTypeFontGenerator.FreeTypeFontParameter params = new FreeTypeFontGenerator.FreeTypeFontParameter();
         params.size = 24;
@@ -69,17 +79,14 @@ public class MenuScreen extends BaseScreen {
         fontTitulo = generator.generateFont(params);
 
         generator.dispose();
+    }
 
-        Label.LabelStyle labelStyle = new Label.LabelStyle();
-        labelStyle.font = fontTitulo;
-        lbTitulo = new Label("Space Invaders", labelStyle);
-        cenario.addActor(lbTitulo);
+    private void initTexturas() {
+        botaoTextura = new Texture(Gdx.files.internal("buttons/button.png"));
+        botaoPressionadoTextura = new Texture(Gdx.files.internal("buttons/button-down.png"));
+    }
 
-        labelStyle = new Label.LabelStyle();
-        labelStyle.font = fontBotoes;
-        lbPontuacao = new Label("Pontuação: " + Preferencias.getMaiorPontuacao(), labelStyle);
-        cenario.addActor(lbPontuacao);
-
+    private void initBotoes() {
         ImageTextButton.ImageTextButtonStyle style = new ImageTextButton.ImageTextButtonStyle();
         style.font = fontBotoes;
         style.up = new SpriteDrawable(new Sprite(botaoTextura));
