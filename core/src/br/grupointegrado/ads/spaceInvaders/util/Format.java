@@ -9,6 +9,11 @@ public class Format {
 
     private static DecimalFormat format = new DecimalFormat("###,###,###,##0");
 
+    /**
+     * Recebe um número Inteiro e converte para String adicionado formatação.
+     * @param number
+     * @return
+     */
     public static String format(int number){
         return format.format(number);
     }
