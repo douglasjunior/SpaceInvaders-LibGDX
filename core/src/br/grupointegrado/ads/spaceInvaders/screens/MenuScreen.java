@@ -8,6 +8,7 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.Sprite;
 import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator;
+import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.ImageTextButton;
@@ -66,12 +67,12 @@ public class MenuScreen extends BaseScreen {
     private void initFonts() {
         FreeTypeFontGenerator generator = new FreeTypeFontGenerator(Gdx.files.internal("fonts/roboto.ttf"));
         FreeTypeFontGenerator.FreeTypeFontParameter params = new FreeTypeFontGenerator.FreeTypeFontParameter();
-        params.size = 24;
+        params.size = MathUtils.roundPositive(32 * Gdx.graphics.getDensity());
         params.color = Color.BLACK;
         fontBotoes = generator.generateFont(params);
 
         params = new FreeTypeFontGenerator.FreeTypeFontParameter();
-        params.size = 32;
+        params.size = MathUtils.roundPositive(48 * Gdx.graphics.getDensity());
         params.color = new Color(.25f, .25f, .85f, 1);
         params.shadowOffsetX = 2;
         params.shadowOffsetY = 2;
@@ -114,11 +115,11 @@ public class MenuScreen extends BaseScreen {
     }
 
     private void atualizarBotoes() {
-        lbTitulo.setPosition(camera.viewportWidth / 2 - lbTitulo.getWidth() / 2, camera.viewportHeight - 100);
+        lbTitulo.setPosition(camera.viewportWidth / 2 - lbTitulo.getPrefWidth() / 2, camera.viewportHeight - lbTitulo.getPrefHeight() - 50);
 
-        btnIniciar.setPosition(camera.viewportWidth / 2 - btnIniciar.getWidth() / 2, camera.viewportHeight / 2 - btnIniciar.getPrefHeight() / 2);
+        btnIniciar.setPosition(camera.viewportWidth / 2 - btnIniciar.getPrefWidth() / 2, camera.viewportHeight / 2 - btnIniciar.getPrefHeight() / 2);
 
-        lbPontuacao.setPosition(camera.viewportWidth / 2 - lbPontuacao.getWidth() / 2, 100);
+        lbPontuacao.setPosition(camera.viewportWidth / 2 - lbPontuacao.getPrefWidth() / 2, 100);
     }
 
     @Override

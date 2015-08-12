@@ -14,7 +14,9 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Rectangle;
+import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Stage;
+import com.badlogic.gdx.scenes.scene2d.actions.Actions;
 import com.badlogic.gdx.scenes.scene2d.ui.Image;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.utils.SpriteDrawable;
@@ -38,6 +40,7 @@ public class PlayScreen extends BaseScreen {
     private Stage informacoes; // Stage para imprimir informações na tela
     private Image jogador; // Image é uma implementação de Actor, que são os atores do jogo.
     private Label lbPontuacao;
+    private Label lbBonus;
     private Label lbGameOver;
     private Label lbMaiorPontuacao;
     private Label lbPausado;
@@ -46,17 +49,20 @@ public class PlayScreen extends BaseScreen {
     private Texture jogadorTexturaDireita;
     private Texture asteroideTextura1;
     private Texture asteroideTextura2;
-    private Texture tiroTexture;
+    private Texture tiroTextura;
+    private Texture bonusTextura;
     private Array<Texture> explosoesTexturas = new Array<Texture>();
     private Array<Image> tiros = new Array<Image>();
     private Array<Image> asteroides = new Array<Image>();
     private Array<Explosao> explosoes = new Array<Explosao>();
+    private Array<Image> bonuses = new Array<Image>();
     private Music musicaFundo;
     private Sound somExplosao;
     private Sound somGameover;
     private Sound somTiro;
     private float velocidadeJogador = 200;
     private float velocidadeTiro = 250;
+    private float velocidadeBonus = 100;
     private float velocidadeAsteroide1 = 100;
     private float velocidadeAsteroide2 = 150;
     private int maxAsteroides = 10;
@@ -67,6 +73,8 @@ public class PlayScreen extends BaseScreen {
     private boolean gameOver = false;
     private boolean pausado = false;
     private int pontuacao = 0;
+    private float TEMPO_POR_BONUS = 10;
+    private float tempoBonus = 0;
 
     public PlayScreen(MainGame game) {
         super(game);
@@ -81,13 +89,22 @@ public class PlayScreen extends BaseScreen {
         batch = new SpriteBatch();
         cenario = new Stage(new FillViewport(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), camera));
         informacoes = new Stage(new FillViewport(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), camera));
-        tiroTexture = new Texture("sprites/shot.png");
-        asteroideTextura1 = new Texture("sprites/enemie-1.png");
-        asteroideTextura2 = new Texture("sprites/enemie-2.png");
+
+        initTexturas();
         initPlayer();
-        initExplosoes();
         initInformacoes();
         initSons();
+    }
+
+    private void initTexturas() {
+        tiroTextura = new Texture("sprites/shot.png");
+        asteroideTextura1 = new Texture("sprites/enemie-1.png");
+        asteroideTextura2 = new Texture("sprites/enemie-2.png");
+        bonusTextura = new Texture("sprites/bonus.png");
+        for (int i = 1; i <= 17; i++) {
+            Texture explosao = new Texture("sprites/explosion-" + i + ".png");
+            explosoesTexturas.add(explosao);
+        }
     }
 
     private void initSons() {
@@ -102,7 +119,7 @@ public class PlayScreen extends BaseScreen {
     private void initInformacoes() {
         FreeTypeFontGenerator generator = new FreeTypeFontGenerator(Gdx.files.internal("fonts/roboto.ttf"));
         FreeTypeFontGenerator.FreeTypeFontParameter params = new FreeTypeFontGenerator.FreeTypeFontParameter();
-        params.size = 24;
+        params.size = MathUtils.roundPositive(32 * Gdx.graphics.getDensity());
         params.shadowOffsetX = 2;
         params.shadowOffsetY = 2;
         font = generator.generateFont(params);
@@ -112,7 +129,7 @@ public class PlayScreen extends BaseScreen {
         Label.LabelStyle style = new Label.LabelStyle();
         style.font = font;
 
-        lbPontuacao = new Label("", style);
+        lbPontuacao = new Label("0 pontos", style);
         informacoes.addActor(lbPontuacao);
 
         lbGameOver = new Label("Game Over!", style);
@@ -126,13 +143,10 @@ public class PlayScreen extends BaseScreen {
         lbMaiorPontuacao = new Label("Maior pontuacao: 0", style);
         lbMaiorPontuacao.setVisible(false);
         informacoes.addActor(lbMaiorPontuacao);
-    }
 
-    private void initExplosoes() {
-        for (int i = 1; i <= 17; i++) {
-            Texture explosao = new Texture("sprites/explosion-" + i + ".png");
-            explosoesTexturas.add(explosao);
-        }
+        lbBonus = new Label("Tempo bonus: 0", style);
+        lbBonus.setVisible(false);
+        informacoes.addActor(lbBonus);
     }
 
     private void initPlayer() {
@@ -154,17 +168,18 @@ public class PlayScreen extends BaseScreen {
         Gdx.gl.glClearColor(.15f, .15f, .25f, 1);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
-        capturaTeclas(delta);
+        capturarTeclas(delta);
         if (!gameOver) {
             if (!pausado) {
-                capturaTeclasJogo(delta);
-                atualizaJogador(delta);
-                atualizaAsteroides(delta);
+                capturarTeclasJogo(delta);
+                atualizarJogador(delta);
+                atualizarAsteroides(delta);
                 atualizarTiros(delta);
+                atualizarBonus(delta);
                 detectarColisoes(delta);
             }
         }
-        atualizaExplosoes(delta);
+        atualizarExplosoes(delta);
         atualizarInformacoes(delta);
 
         // desenha o cenário na tela
@@ -185,33 +200,59 @@ public class PlayScreen extends BaseScreen {
         informacoes.draw();
     }
 
-    private void capturaTeclas(float delta) {
+    private int bonusMeta = 100;
+    private int bonusLevel = 0;
+
+    private void atualizarBonus(float delta) {
+        // atualiza o tempo de bonus
+        tempoBonus -= delta;
+        if (tempoBonus < 0)
+            tempoBonus = 0;
+
+        for (Image bonus : bonuses) {
+            // movimenta o tiro em direção ao topo da tela
+            float x = bonus.getX();
+            float y = bonus.getY() - velocidadeBonus * delta;
+            bonus.setPosition(x, y);
+            // verifica se o tiro já saiu da tela
+            if (bonus.getY() + bonus.getHeight() < 0) {
+                bonus.remove();
+                bonuses.removeValue(bonus, true);
+            }
+        }
+        if (pontuacao > 0) {
+            // calcula o level atual da pontuação do usuário
+            int bonusLevel = pontuacao / bonusMeta;
+            // verifica se o level atual é maior que o último level atingido
+            if (bonusLevel > this.bonusLevel) {
+                this.bonusLevel = bonusLevel;
+                Image bonus = new Image(bonusTextura);
+                setPosicaoAleatoria(bonus);
+                cenario.addActor(bonus);
+                bonuses.add(bonus);
+            }
+        }
+    }
+
+    private void setPosicaoAleatoria(Actor actor) {
+        float y = MathUtils.random(camera.viewportHeight, camera.viewportHeight * 2);
+        float x = MathUtils.random(0, camera.viewportWidth - actor.getWidth());
+        actor.setPosition(x, y);
+    }
+
+    private void capturarTeclas(float delta) {
         // verifica se o botão PAUSE foi pressionado
         if (!gameOver && Gdx.input.isKeyJustPressed(Input.Keys.CONTROL_LEFT)) {
             pausado = !pausado;
         }
         // verifica se o ENTER foi pressionado para reiniciar o Jogo
-        if (gameOver && Gdx.input.isKeyJustPressed(Input.Keys.ENTER)) {
+        if (gameOver && (Gdx.input.isKeyJustPressed(Input.Keys.ENTER) || Gdx.input.justTouched())) {
             reiniciarJogo();
         }
     }
 
     private void reiniciarJogo() {
-        pontuacao = 0;
-        gameOver = false;
-        pausado = false;
-        for (Image ast : asteroides) {
-            ast.remove();
-        }
-        asteroides.clear();
-        for (Image tiro : tiros) {
-            tiro.remove();
-        }
-        tiros.clear();
-        explosoes.clear();
-        jogador.setX(camera.viewportWidth / 2 - jogador.getWidth() / 2);
-        jogador.setVisible(true);
-        musicaFundo.play();
+        game.setScreen(new MenuScreen(game));
     }
 
     /**
@@ -221,7 +262,7 @@ public class PlayScreen extends BaseScreen {
      */
     private void atualizarInformacoes(float delta) {
         lbPontuacao.setText(Format.format(pontuacao) + " pontos");
-        lbPontuacao.setPosition(10, camera.viewportHeight - lbPontuacao.getPrefHeight());
+        lbPontuacao.setPosition(10, camera.viewportHeight - lbPontuacao.getPrefHeight() - 10);
 
         lbGameOver.setVisible(gameOver);
         lbGameOver.setPosition(camera.viewportWidth / 2 - lbGameOver.getWidth() / 2, camera.viewportHeight / 2 - lbGameOver.getHeight() / 2);
@@ -232,9 +273,13 @@ public class PlayScreen extends BaseScreen {
         lbMaiorPontuacao.setText("Maior pontuação: " + Format.format(Preferencias.getMaiorPontuacao()));
         lbMaiorPontuacao.setVisible(gameOver);
         lbMaiorPontuacao.setPosition(camera.viewportWidth / 2 - lbMaiorPontuacao.getPrefWidth() / 2, lbGameOver.getY() - 100);
+
+        lbBonus.setVisible(tempoBonus > 0);
+        lbBonus.setText("Tempo bonus: " + (int) tempoBonus);
+        lbBonus.setPosition(camera.viewportWidth - lbBonus.getPrefWidth() - 10, lbPontuacao.getY());
     }
 
-    private void atualizaExplosoes(float delta) {
+    private void atualizarExplosoes(float delta) {
         for (Explosao exp : explosoes) {
             exp.atualizar(delta);
             // verifica se a explosão já passou todos os estágios
@@ -244,7 +289,7 @@ public class PlayScreen extends BaseScreen {
         }
     }
 
-    private void atualizaJogador(float delta) {
+    private void atualizarJogador(float delta) {
         if (indoDireita) {
             // impede que o jogador saia da tela
             if (jogador.getX() + jogador.getWidth() < camera.viewportWidth) {
@@ -260,23 +305,38 @@ public class PlayScreen extends BaseScreen {
         } else {
             jogador.setDrawable(new SpriteDrawable(new Sprite(jogadorTextura)));
         }
+        // atualiza o bonus do jogador
+        if (tempoBonus == 0 && jogador.hasActions()) {
+            jogador.clearActions();
+            jogador.addAction(Actions.alpha(1));
+        }
+        if (tempoBonus > 0 && !jogador.hasActions()) {
+            jogador.addAction(Actions.forever(Actions.sequence(Actions.fadeOut(0.3f), Actions.fadeIn(0.3f))));
+        }
     }
 
     private void detectarColisoes(float delta) {
         Rectangle boundsAsteroid = new Rectangle();
         Rectangle boundsShoot = new Rectangle();
+        Rectangle boundsBonus = new Rectangle();
         Rectangle boundsJogador = new Rectangle(jogador.getX(), jogador.getY(), jogador.getWidth(), jogador.getHeight());
         for (Image asteroid : asteroides) {
             boundsAsteroid.set(asteroid.getX(), asteroid.getY(), asteroid.getWidth(), asteroid.getHeight());
             if (boundsAsteroid.overlaps(boundsJogador)) {
-                criarExplosao(jogador.getX() + jogador.getWidth() / 2, jogador.getY() + jogador.getHeight() / 2);
-                jogador.setVisible(false);
                 asteroid.remove();
                 asteroides.removeValue(asteroid, true);
-                somGameover.play();
-                musicaFundo.pause();
-                gameOver();
-                return;
+                if (tempoBonus == 0) {
+                    criarExplosao(jogador.getX() + jogador.getWidth() / 2, jogador.getY() + jogador.getHeight() / 2);
+                    jogador.setVisible(false);
+                    somGameover.play();
+                    musicaFundo.pause();
+                    gameOver();
+                    return;
+                }else{
+                    criarExplosao(asteroid.getX() + asteroid.getWidth() / 2, asteroid.getY() + asteroid.getHeight() / 2);
+                    incrementaPontuacao(asteroid);
+                    somExplosao.play();
+                }
             }
             for (Image tiro : tiros) {
                 boundsShoot.set(tiro.getX(), tiro.getY(), tiro.getWidth(), tiro.getHeight());
@@ -290,6 +350,14 @@ public class PlayScreen extends BaseScreen {
                     incrementaPontuacao(asteroid);
                     somExplosao.play();
                 }
+            }
+        }
+        for (Image bonus : bonuses) {
+            boundsBonus.set(bonus.getX(), bonus.getY(), bonus.getWidth(), bonus.getHeight());
+            if (boundsBonus.overlaps(boundsJogador)) {
+                bonus.remove();
+                bonuses.removeValue(bonus, true);
+                tempoBonus += TEMPO_POR_BONUS;
             }
         }
     }
@@ -318,7 +386,7 @@ public class PlayScreen extends BaseScreen {
         explosoes.add(explosao);
     }
 
-    private void atualizaAsteroides(float delta) {
+    private void atualizarAsteroides(float delta) {
         for (Image asteroid : asteroides) {
             float velocidade;
             // verifica o tipo do asteroid para decidir a velocidade
@@ -351,13 +419,12 @@ public class PlayScreen extends BaseScreen {
                 asteroid.setName("2");
             }
             // configura posições aleatórias para os asteroides
-            float x = MathUtils.random(0, camera.viewportWidth - asteroid.getWidth());
-            float y = MathUtils.random(camera.viewportHeight, camera.viewportHeight * 2);
-            asteroid.setPosition(x, y);
+            setPosicaoAleatoria(asteroid);
             asteroides.add(asteroid);
             cenario.addActor(asteroid);
         }
     }
+
 
     private void decrementaPontuacao(Image asteroid) {
         // verifica o tipo do asteroide para decrementar a pontuação
@@ -384,7 +451,7 @@ public class PlayScreen extends BaseScreen {
         if (atirando) {
             // verifica se o último tiro foi disparado a 400 milisegundos atrás
             if (System.currentTimeMillis() - ultimoTiro >= intervaloTiros) {
-                Image tiro = new Image(tiroTexture);
+                Image tiro = new Image(tiroTextura);
                 float x = jogador.getX() + jogador.getWidth() / 2 - tiro.getWidth() / 2;
                 float y = jogador.getY() + jogador.getHeight();
                 tiro.setPosition(x, y);
@@ -396,7 +463,7 @@ public class PlayScreen extends BaseScreen {
         }
     }
 
-    private void capturaTeclasJogo(float delta) {
+    private void capturarTeclasJogo(float delta) {
         indoDireita = false;
         indoEsquerda = false;
         atirando = false;
@@ -461,7 +528,10 @@ public class PlayScreen extends BaseScreen {
         jogadorTextura.dispose();
         jogadorTexturaDireita.dispose();
         jogadorTexturaEsquerda.dispose();
-        tiroTexture.dispose();
+        tiroTextura.dispose();
+        asteroideTextura1.dispose();
+        asteroideTextura2.dispose();
+        bonusTextura.dispose();
         for (Texture t : explosoesTexturas) {
             t.dispose();
         }
