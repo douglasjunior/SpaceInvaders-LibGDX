@@ -57,9 +57,11 @@ public class PlayScreen extends BaseScreen {
     private Array<Explosao> explosoes = new Array<Explosao>();
     private Array<Image> bonuses = new Array<Image>();
     private Music musicaFundo;
+    private Music musicaBonus;
     private Sound somExplosao;
     private Sound somGameover;
     private Sound somTiro;
+    private Music somBobus;
     private float velocidadeJogador = 200;
     private float velocidadeTiro = 250;
     private float velocidadeBonus = 100;
@@ -111,9 +113,19 @@ public class PlayScreen extends BaseScreen {
         musicaFundo = Gdx.audio.newMusic(Gdx.files.internal("sounds/background.mp3"));
         musicaFundo.setLooping(true);
         musicaFundo.play();
+        musicaBonus = Gdx.audio.newMusic(Gdx.files.internal("sounds/bonus-background.mp3"));
+        musicaBonus.setLooping(true);
         somExplosao = Gdx.audio.newSound(Gdx.files.internal("sounds/explosion.mp3"));
         somGameover = Gdx.audio.newSound(Gdx.files.internal("sounds/gameover.mp3"));
         somTiro = Gdx.audio.newSound(Gdx.files.internal("sounds/shoot.mp3"));
+        somBobus = Gdx.audio.newMusic(Gdx.files.internal("sounds/bonus.mp3"));
+        somBobus.setOnCompletionListener(new Music.OnCompletionListener() {
+            @Override
+            public void onCompletion(Music music) {
+                musicaFundo.stop();
+                musicaBonus.play();
+            }
+        });
     }
 
     private void initInformacoes() {
@@ -171,6 +183,7 @@ public class PlayScreen extends BaseScreen {
         capturarTeclas(delta);
         if (!gameOver) {
             if (!pausado) {
+                atualizarSons();
                 capturarTeclasJogo(delta);
                 atualizarJogador(delta);
                 atualizarAsteroides(delta);
@@ -200,6 +213,17 @@ public class PlayScreen extends BaseScreen {
         informacoes.draw();
     }
 
+    private void atualizarSons() {
+        if (tempoBonus == 0) {
+            if (musicaBonus.isPlaying()) {
+                musicaBonus.stop();
+            }
+            if (!musicaFundo.isPlaying()) {
+                musicaFundo.play();
+            }
+        }
+    }
+
     private int bonusMeta = 100;
     private int bonusLevel = 0;
 
@@ -220,17 +244,15 @@ public class PlayScreen extends BaseScreen {
                 bonuses.removeValue(bonus, true);
             }
         }
-        if (pontuacao > 0) {
-            // calcula o level atual da pontuação do usuário
-            int bonusLevel = pontuacao / bonusMeta;
-            // verifica se o level atual é maior que o último level atingido
-            if (bonusLevel > this.bonusLevel) {
-                this.bonusLevel = bonusLevel;
-                Image bonus = new Image(bonusTextura);
-                setPosicaoAleatoria(bonus);
-                cenario.addActor(bonus);
-                bonuses.add(bonus);
-            }
+        // calcula o level atual da pontuação do usuário
+        int bonusLevel = (int) ((float) pontuacao / (float) bonusMeta);
+        // verifica se o level atual é maior que o último level atingido
+        if (bonusLevel > this.bonusLevel) {
+            this.bonusLevel = bonusLevel;
+            Image bonus = new Image(bonusTextura);
+            setPosicaoAleatoria(bonus);
+            cenario.addActor(bonus);
+            bonuses.add(bonus);
         }
     }
 
@@ -311,7 +333,7 @@ public class PlayScreen extends BaseScreen {
             jogador.addAction(Actions.alpha(1));
         }
         if (tempoBonus > 0 && !jogador.hasActions()) {
-            jogador.addAction(Actions.forever(Actions.sequence(Actions.fadeOut(0.3f), Actions.fadeIn(0.3f))));
+            jogador.addAction(Actions.forever(Actions.sequence(Actions.fadeOut(0.2f), Actions.fadeIn(0.2f))));
         }
     }
 
@@ -329,10 +351,11 @@ public class PlayScreen extends BaseScreen {
                     criarExplosao(jogador.getX() + jogador.getWidth() / 2, jogador.getY() + jogador.getHeight() / 2);
                     jogador.setVisible(false);
                     somGameover.play();
-                    musicaFundo.pause();
+                    musicaFundo.stop();
+                    musicaBonus.stop();
                     gameOver();
                     return;
-                }else{
+                } else {
                     criarExplosao(asteroid.getX() + asteroid.getWidth() / 2, asteroid.getY() + asteroid.getHeight() / 2);
                     incrementaPontuacao(asteroid);
                     somExplosao.play();
@@ -358,6 +381,10 @@ public class PlayScreen extends BaseScreen {
                 bonus.remove();
                 bonuses.removeValue(bonus, true);
                 tempoBonus += TEMPO_POR_BONUS;
+                somBobus.stop();
+                somBobus.play();
+                musicaBonus.pause();
+                musicaFundo.stop();
             }
         }
     }
@@ -537,8 +564,10 @@ public class PlayScreen extends BaseScreen {
         }
         informacoes.dispose();
         musicaFundo.dispose();
+        musicaBonus.dispose();
         somExplosao.dispose();
         somGameover.dispose();
         somTiro.dispose();
+        somBobus.dispose();
     }
 }
