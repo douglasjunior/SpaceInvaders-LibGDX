@@ -64,7 +64,7 @@ public class PlayScreen extends BaseScreen {
     private Music somBobus;
     private float velocidadeJogador = 200;
     private float velocidadeTiro = 250;
-    private float velocidadeBonus = 100;
+    private float velocidadeBonus = 50;
     private float velocidadeAsteroide1 = 100;
     private float velocidadeAsteroide2 = 150;
     private int maxAsteroides = 10;
@@ -76,7 +76,7 @@ public class PlayScreen extends BaseScreen {
     private boolean pausado = false;
     private int pontuacao = 0;
     private float TEMPO_POR_BONUS = 10;
-    private float tempoBonus = 0;
+    private int tempoBonus = 0;
 
     public PlayScreen(MainGame game) {
         super(game);
@@ -224,7 +224,7 @@ public class PlayScreen extends BaseScreen {
         }
     }
 
-    private int bonusMeta = 100;
+    private int bonusMeta = 500;
     private int bonusLevel = 0;
 
     private void atualizarBonus(float delta) {
@@ -297,8 +297,7 @@ public class PlayScreen extends BaseScreen {
         lbMaiorPontuacao.setPosition(camera.viewportWidth / 2 - lbMaiorPontuacao.getPrefWidth() / 2, lbGameOver.getY() - 100);
 
         lbBonus.setVisible(tempoBonus > 0);
-        lbBonus.setText("Tempo bonus: " + (int) tempoBonus);
-        lbBonus.setPosition(camera.viewportWidth - lbBonus.getPrefWidth() - 10, lbPontuacao.getY());
+        lbBonus.setText("Bônus: " + tempoBonus + " s");
     }
 
     private void atualizarExplosoes(float delta) {
@@ -528,6 +527,19 @@ public class PlayScreen extends BaseScreen {
     public void resize(int width, int height) {
         camera.setToOrtho(false, width, height);
         camera.update();
+
+        atualizaVelocidades();
+    }
+
+    /**
+     * Calcula velocidades de acordo com o tamanho da tela
+     */
+    private void atualizaVelocidades() {
+        velocidadeAsteroide1 = camera.viewportHeight / 6;
+        velocidadeAsteroide2 = camera.viewportHeight / 4;
+        velocidadeJogador = camera.viewportWidth / 1.8f;
+        velocidadeTiro = camera.viewportHeight / 2.5f;
+        velocidadeBonus = camera.viewportHeight / 8;
     }
 
     /**
