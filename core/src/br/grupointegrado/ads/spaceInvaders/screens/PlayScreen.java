@@ -75,8 +75,8 @@ public class PlayScreen extends BaseScreen {
     private boolean gameOver = false;
     private boolean pausado = false;
     private int pontuacao = 0;
-    private float TEMPO_POR_BONUS = 10;
-    private int tempoBonus = 0;
+    private final float TEMPO_POR_BONUS = 10;
+    private float tempoBonus = 0;
 
     public PlayScreen(MainGame game) {
         super(game);
@@ -227,7 +227,7 @@ public class PlayScreen extends BaseScreen {
     private int bonusMeta = 500;
     private int bonusLevel = 0;
 
-    private void atualizarBonus(float delta) {
+    private void atualizarBonus(final float delta) {
         // atualiza o tempo de bonus
         tempoBonus -= delta;
         if (tempoBonus < 0)
@@ -296,8 +296,9 @@ public class PlayScreen extends BaseScreen {
         lbMaiorPontuacao.setVisible(gameOver);
         lbMaiorPontuacao.setPosition(camera.viewportWidth / 2 - lbMaiorPontuacao.getPrefWidth() / 2, lbGameOver.getY() - 100);
 
+        lbBonus.setPosition(camera.viewportWidth - lbBonus.getPrefWidth() - 10, lbPontuacao.getY());
         lbBonus.setVisible(tempoBonus > 0);
-        lbBonus.setText("Bônus: " + tempoBonus + " s");
+        lbBonus.setText("Bônus: " + (int) tempoBonus + " s");
     }
 
     private void atualizarExplosoes(float delta) {
